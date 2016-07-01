@@ -12,6 +12,7 @@
         factory(jQuery);
     }
 })(this, function($) {
+	var lang = $.fn.demo.lang;
 	/**
      * 工具类
      */
@@ -64,7 +65,8 @@
             noop: function() {}
         };
     }();//_
-    
+     
+
     //...其他内部组件类
 
     /**
@@ -247,9 +249,18 @@
          * 默认配置参数
          */
         $.fn.demo.defaults = {
-             "foo":"xxx",
-            ,"noop": "upload", /* yy */
+             "foo":"xxx"
+            ,"noop": "upload" /* yy */
             ,"bar": 2 /* xx */
         };//$.fn.demo.defaults
+
+        /**
+         * 文言
+         */
+        $.fn.demo.lang = {
+        	 "foo":""
+
+        	,"bar":""
+	    };//$.fn.demo.lang
     })();//jQuery 插件
 });
