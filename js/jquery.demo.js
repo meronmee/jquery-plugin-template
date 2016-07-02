@@ -3,7 +3,7 @@
  */
 (function(root, factory) {
     if (typeof define === "function" && define.amd) {
-        define("demo.js", [ "jquery" ], function(a0) {
+        define("jquery.demo.js", [ "jquery" ], function(a0) {
             return factory(a0);
         });
     } else if (typeof exports === "object") {
@@ -12,7 +12,8 @@
         factory(jQuery);
     }
 })(this, function($) {
-	var lang = $.fn.demo.lang;
+	var lang, consts;
+
 	/**
      * 工具类
      */
@@ -79,6 +80,10 @@
          * @param {json} opts   配置参数
          */
         function Demo(opts) {
+        	//初始化全局变量
+        	lang = $.fn.demo.lang;
+        	consts = $.fn.demo.consts;
+
 			//参数预处理        
             opts = this._prepare(opts);
             
@@ -121,7 +126,7 @@
             //--------------------------
             getInstance: function getInstance(){
                 return this;
-            }
+            },
             isEnabled: function isEnabled() {
                 return this.enabled;
             },
@@ -143,102 +148,142 @@
         return Demo;
     }();//var Demo = function()
 
-    //jQuery 插件
+    /**
+	 * jQuery插件
+	 * =====================
+	 */
     (function() {
         "use strict";
-        var old, keys, methods;
-       
+
+        var old, keys;       
         old = $.fn.demo;
 
         //关键变量名
         keys = {
-            demo: "demo"
+            "datakey": "demo"
         };
-        methods = {
-            /**
-             * 初始化插件
-             * @param  {json} opts  配置参数
-             * @return {jq}         可链式的jQuery对象
-             */
-            initialize: function initialize(opts) {
-                var opts = opts || {};
 
-                return this.each(create);
+		/**
+         * 插件定义
+		 * =====================
+         */
+        $.fn.demo = function(options) {
+            if (typeof options === 'string') {//第一个参数是string类型，对已有对象调用API方法
+				var args = arguments,
+					method = options;
 
-                function create() {
-                    var $this, demo;
+				if (method.charAt(0) === "_"){ //不处理私有方法
+					return this;
+				}
 
-                    $this = $(this);
-                    
-                    //创建各个内部组件和主插件
-					//...
-                    demo = new Demo({
-                        //...
-                    });
+				Array.prototype.shift.call(args); //移除第一个参数，即方法名method
+				if (method.substr(0,3) === "get"){ //取值类的方法，只获得第一个元素的返回值			
+					var $first = $($(this)[0]);
+					var instance = $first.data(keys.datakey);
+					if (instance && instance[method]){
+						return instance[method].apply(instance, args);
+					}
+				} else { //其他方法
+					return this.each(function() {
+						var instance =	$(this).data(keys.datakey);
+						if (instance && instance[method]) {
+							instance[method].apply(instance, args);
+						}
+					});
+				}
+			} else {//初始化对象			
+				return initialize.apply(this, arguments);
+			}
+        };//$.fn.demo
 
-                    //绑定主插件到元素上
-                    $this.data(keys.demo, demo);
-                }
-            },
+        /**
+         * 插件定义
+         * 首字母小写，初始化后返回可链式操作的jQuery对象
+		 * =====================
+         */
+		$.fn.demo = function(options) {		
+			if (typeof options === 'string') {//第一个参数是string类型，则对已有对象调用API方法
+				return invokeapi.apply(this, arguments);
+			} else {//初始化对象			
+				return initialize.apply(this, arguments);
+			}
+		};//$.fn.demo
+		
+		/**
+         * 插件定义
+         * 首字母大写的变形的插件，初始化后返回第一个插件实例
+		 * =====================
+         */
+		$.fn.Demo = function(options) {		
+			if (typeof options === 'string') {//第一个参数是string类型，则对已有对象调用API方法
+				return invokeapi.apply(this, arguments);
+			} else {//初始化对象			
+				initialize.apply(this, arguments);
+				
+				var $first = $($(this)[0]);
+				var instance = $first.data(keys.datakey);
+				return instance;
+			}
+		};//$.fn.Demo
+		
+		/**
+	     * 调用API方法
+	     */
+	    function invokeapi() {
+	    	var method = arguments[0],//第一个参数是API方法名
+	    	args = [].slice.call(arguments, 1);//第一个参数外的所有参数才是API方法的参数;
+			
+	    	if (method.charAt(0) == "_"){ //不处理私有方法
+				return this;
+			}
+			if (method.substr(0,3) == "get"){ //取值类方法，只获得第一个元素的返回值			
+				var $first = $($(this)[0]);
+				var instance = $first.data(keys.datakey);
+				if (instance && instance[method]){
+					return instance[method].apply(instance, args);
+				}
+			} else { //其他方法
+				return this.each(function() {
+					var instance =	$(this).data(keys.datakey);
+					if (instance && instance[method]) {
+						instance[method].apply(instance, args);
+					}
+				});
+			}
+	    }//invokeapi
+	    
+	    /**
+	     * 初始化插件
+	     * @param  {json} opts  	配置参数
+	     * @return {jq}         	可链式的jQuery对象
+	     */
+	    function initialize(opts) {
+	        var opts = opts || {};
+	
+	        return this.each(create);
+	
+	        function create() {
+	            var $this, instance;	            
+	            $this = $(this);
+	            
+	            if($this.data(keys.datakey)){
+					//已初始化
+				} else {
+					//创建各内部辅助类
+					
+					//创建主类
+					instance = new Demo(this, opts);
+						
+		            //绑定主插件到元素上
+		            $this.data(keys.datakey, instance);				
+				}
+	        }//create
+	    }//initialize
 
-            //插件API接口
-            //------------------
-            getInstance: function getInstance(){
-                return this;
-            }
-            isEnabled: function isEnabled() {
-                var enabled;
-                runEach(this.first(), function(t) {
-                    enabled = t.isEnabled();
-                });
-                return enabled;
-            },
-            enable: function enable() {
-                runEach(this, function(t) {
-                    t.enable();
-                });
-                return this;
-            },
-            disable: function disable() {
-                runEach(this, function(t) {
-                    t.disable();
-                });
-                return this;
-            },
-            isActive: function isActive() {
-                var active;
-                runEach(this.first(), function(t) {
-                    active = t.isActive();
-                });
-                return active;
-            },
-            destroy: function destroy() {
-                runEach(this, function(t, $input) {
-                    t.destroy();
-                });
-                return this;
-            }
-        };//methods
-
-        //执行具体API方法
-        function runEach($els, fn) {
-            $els.each(function() {
-                var $this = $(this), demo;
-                (demo = $this.data(keys.demo)) && fn(demo, $this);
-            });
-        }
-
-        //插件定义
-        $.fn.demo = function(method) {
-            if (methods[method]) {//如果method是API方法名，则执行调用API方法
-                return methods[method].apply(this, [].slice.call(arguments, 1));
-            } else {//否则执行插件初始化操作
-                return methods.initialize.apply(this, arguments);
-            }
-        };
         
         /**
          * 冲突处理
+		 * =====================
          */
         $.fn.demo.noConflict = function noConflict() {
             $.fn.demo = old;
@@ -247,6 +292,7 @@
 
         /**
          * 默认配置参数
+		 * =====================
          */
         $.fn.demo.defaults = {
              "foo":"xxx"
@@ -256,11 +302,20 @@
 
         /**
          * 文言
+		 * =====================
          */
         $.fn.demo.lang = {
         	 "foo":""
 
         	,"bar":""
 	    };//$.fn.demo.lang
+
+	    /**
+	     * 关键变量
+		 * =====================
+	     */
+	    $.fn.demo.consts = {
+		    'boxcls':'demo'//最外容器类名
+		};
     })();//jQuery 插件
 });
